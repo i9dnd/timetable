@@ -1,1 +1,781 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Мое расписание</title>
+    <style>
+        :root {
+            /* Светлая тема */
+            --bg-body: #f0f2f5;
+            --bg-card: #ffffff;
+            --bg-panel: #fafbfc;
+            --text-main: #1a202c;
+            --text-muted: #718096;
+            --border-color: #e2e8f0;
+            
+            --rus-color: #805ad5;
+            --math-base: #48bb78;
+            --math-med: #ecc94b;
+            --math-hard: #f56565;
+            --deadline-color: #ed8936;
+            --rec-color: #e53e3e;
+            
+            --day-hover: #edf2f7;
+            --day-active: #e9d8fd;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+        }
 
+        [data-theme="dark"] {
+            /* Темная тема */
+            --bg-body: #171923;
+            --bg-card: #1a202c;
+            --bg-panel: #2d3748;
+            --text-main: #f7fafc;
+            --text-muted: #a0aec0;
+            --border-color: #4a5568;
+            
+            --rus-color: #9f7aea;
+            --math-base: #68d391;
+            --math-med: #f6e05e;
+            --math-hard: #fc8181;
+            --deadline-color: #f6ad55;
+            --rec-color: #fc8181;
+            
+            --day-hover: #2d3748;
+            --day-active: #44337a;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            background-color: var(--bg-card);
+            width: 100%;
+            max-width: 1280px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow);
+        }
+
+        /* Шапка */
+        header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        h1 { font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+        
+        .header-controls { display: flex; gap: 16px; align-items: center; }
+
+        .theme-toggle {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .legend { display: flex; gap: 12px; font-size: 12px; color: var(--text-muted); font-weight: 600; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+        /* Основной контент */
+        .main-content { display: flex; flex: 1; }
+
+        /* Календарь */
+        .calendar-section {
+            padding: 24px;
+            border-right: 1px solid var(--border-color);
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .month-navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .month-title { font-size: 20px; font-weight: 800; text-transform: capitalize; }
+
+        .nav-btn {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .nav-btn:hover { background: var(--day-hover); }
+
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            flex: 1;
+        }
+
+        .day {
+            aspect-ratio: 1.1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            font-size: 16px;
+            cursor: pointer;
+            position: relative;
+            border: 1px solid var(--border-color);
+            font-weight: 600;
+            background: var(--bg-card);
+            overflow: hidden;
+        }
+
+        .day:hover { background-color: var(--day-hover); }
+        .day.other-month { color: var(--text-muted); opacity: 0.3; pointer-events: none; border-color: transparent; }
+        
+        .day.active {
+            background-color: var(--day-active) !important;
+            border-color: var(--rus-color) !important;
+            box-shadow: 0 0 0 2px var(--rus-color);
+        }
+
+        /* Индикаторы уровней (полоски снизу) */
+        .level-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            display: flex;
+        }
+        .level-base { background-color: var(--math-base); flex: 1; }
+        .level-med { background-color: var(--math-med); flex: 1; }
+        .level-hard { background-color: var(--math-hard); flex: 1; }
+
+        /* Иконки на дне */
+        .day-icons {
+            display: flex;
+            gap: 4px;
+            position: absolute;
+            top: 4px;
+            right: 4px;
+        }
+
+        .icon-rec { color: var(--rec-color); width: 12px; height: 12px; }
+        
+        .dots-container {
+            display: flex;
+            gap: 3px;
+            position: absolute;
+            bottom: 8px;
+        }
+        .dot-ind { width: 5px; height: 5px; border-radius: 50%; }
+        .dot-rus { background-color: var(--rus-color); }
+        .dot-dl { background-color: var(--deadline-color); }
+
+        /* Список событий */
+        .events-section {
+            padding: 24px;
+            width: 50%;
+            background-color: var(--bg-panel);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .events-date {
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .events-list { overflow-y: auto; flex: 1; padding-right: 8px; }
+
+        /* Скроллбар */
+        .events-list::-webkit-scrollbar { width: 6px; }
+        .events-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+
+        .event-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .event-info { flex: 1; z-index: 2; }
+        
+        .event-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .event-time {
+            font-size: 14px;
+            color: var(--text-main);
+            font-weight: 800;
+            background: var(--bg-panel);
+            padding: 2px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .badge-base { background: rgba(72, 187, 120, 0.15); color: var(--math-base); }
+        .badge-med { background: rgba(236, 201, 75, 0.15); color: #b7791f; }
+        .badge-hard { background: rgba(245, 101, 101, 0.15); color: var(--math-hard); }
+        .badge-rus { background: rgba(128, 90, 213, 0.15); color: var(--rus-color); }
+        
+        .badge-rec {
+            background: rgba(229, 62, 62, 0.15);
+            color: var(--rec-color);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .event-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+
+        .event-teacher {
+            font-size: 13px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Цветовые линии слева от карточки */
+        .event-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+        }
+        .card-base::before { background: var(--math-base); }
+        .card-med::before { background: var(--math-med); }
+        .card-hard::before { background: var(--math-hard); }
+        .card-rus::before { background: var(--rus-color); }
+        .card-dl::before { background: var(--deadline-color); }
+
+        .empty-state { color: var(--text-muted); text-align: center; margin-top: 40px; font-size: 15px; }
+
+        /* Мобильная версия */
+        @media (max-width: 850px) {
+            .main-content { flex-direction: column; }
+            .calendar-section { width: 100%; border-right: none; border-bottom: 1px solid var(--border-color); padding: 16px; }
+            .events-section { width: 100%; padding: 16px; }
+            header { padding: 16px; }
+            .calendar-grid { gap: 4px; }
+            .day { font-size: 14px; border-radius: 8px; }
+            .event-card { padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <header>
+        <h1>📅 Расписание</h1>
+        <div class="header-controls">
+            <div class="legend">
+                <div class="legend-item"><span class="dot" style="background: var(--rus-color);"></span> Русский</div>
+                <div class="legend-item"><span class="dot" style="background: var(--deadline-color);"></span> Дедлайн</div>
+            </div>
+            <button class="theme-toggle" id="themeToggle" title="Сменить тему">🌙</button>
+        </div>
+    </header>
+
+    <div class="main-content">
+        <div class="calendar-section">
+            <div class="month-navigation">
+                <button class="nav-btn" id="prevMonth">❮</button>
+                <div class="month-title" id="monthTitle">Ноябрь 2026</div>
+                <button class="nav-btn" id="nextMonth">❯</button>
+            </div>
+            <div class="weekdays">
+                <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+
+        <div class="events-section">
+            <div class="events-date" id="selectedDateText">Выберите день</div>
+            <div class="events-list" id="eventsList"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // ДАННЫЕ (lvl: base/med/hard, rec: true)
+    // Время профмата изменено на 17:00-19:00, 19:00-21:00 и 17:00-20:00
+    // ==========================================
+    const mathData = {
+        '2026-11': {
+            1: [{t:'12:00-14:00', ty:'d', lvl:'med', n:'Вебинар 2', te:'ТП'}, {t:'18:17', ty:'dl', n:'Дедлайн: Задание 1', te:'ИУ'}, {t:'18:17', ty:'dl', n:'Дедлайн: Задание 1', te:'ИУ'}, {t:'18:17', ty:'dl', n:'Дедлайн: Задание 1', te:'ИУ'}],
+            2: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Графики (прямая, парабола, корень)', te:'Игорь Уколов'}],
+            3: [{t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №10', te:'Антон Гурко'}],
+            4: [{t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов', rec:true}],
+            5: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №20', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'med', n:'Задача №16', te:'Влад Вуль'}], // Убрана запись
+            6: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №4', te:'Игорь Уколов', rec:true}],
+            7: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №3. Пирамиды/призмы', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №2', te:'Антон Гурко'}],
+            9: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Графики (гипербола, окружность)', te:'Игорь Уколов'}],
+            10: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №10', te:'Антон Гурко'}],
+            11: [{t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов', rec:true}],
+            12: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №20', te:'Влад Вуль'}],
+            13: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №4, 5', te:'Игорь Уколов', rec:true}],
+            14: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №3. Составные тела', te:'Антон Гурко'}],
+            16: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Прямоугольный треугольник', te:'Игорь Уколов'}],
+            17: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №6', te:'Антон Гурко'}, {t:'18:17', ty:'dl', n:'Дедлайн по заданию', te:'ИУ'}],
+            18: [{t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов', rec:true}],
+            19: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Влад Вуль'}],
+            20: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №5', te:'Игорь Уколов', rec:true}, {t:'16:38', ty:'dl', n:'Дедлайн: Задание 1', te:'Игорь Уколов'}],
+            21: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №3. Вписанные и описанные тела', te:'Антон Гурко'}, {t:'18:17', ty:'dl', n:'Дедлайн по заданию', te:'ИУ'}],
+            22: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Игорь Уколов', rec:true}],
+            23: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Подобие треугольников', te:'Игорь Уколов'}],
+            24: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №6', te:'Антон Гурко'}],
+            25: [{t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов', rec:true}],
+            26: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Влад Вуль'}],
+            27: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №5', te:'Игорь Уколов', rec:true}],
+            28: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №3. Круглые тела', te:'Антон Гурко'}],
+            29: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Игорь Уколов', rec:true}],
+            30: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Теорема Менелая', te:'Игорь Уколов'}]
+        },
+        '2026-12': {
+            1: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №17', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'med', n:'Задача №14', te:'Антон Гурко'}],
+            2: [{t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов', rec:true}],
+            3: [{t:'17:00-20:00', ty:'d', lvl:'hard', n:'Задача №18, 15 (3 часа)', te:'Влад Вуль', rec:true}],
+            4: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Производная', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №9', te:'Игорь Уколов', rec:true}],
+            5: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №11', te:'Антон Гурко'}],
+            6: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №1', te:'Игорь Уколов', rec:true}],
+            7: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Отношение площадей', te:'Игорь Уколов', rec:true}],
+            8: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №17', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'med', n:'Задача №14', te:'Антон Гурко'}],
+            9: [{t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов', rec:true}],
+            10: [{t:'17:00-20:00', ty:'d', lvl:'hard', n:'Задача №15 (3 часа)', te:'Влад Вуль', rec:true}],
+            11: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №9', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Первообразная', te:'Игорь Уколов', rec:true}],
+            12: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №11', te:'Антон Гурко'}],
+            13: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №1', te:'Игорь Уколов', rec:true}],
+            14: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Отрезки хорд, секущих, касательных', te:'Игорь Уколов', rec:true}],
+            15: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №17', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'med', n:'Задача №14', te:'Антон Гурко'}],
+            16: [{t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов', rec:true}],
+            17: [{t:'17:00-20:00', ty:'d', lvl:'hard', n:'Задача №15 (3 часа)', te:'Влад Вуль'}],
+            19: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №11', te:'Антон Гурко'}],
+            20: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №1', te:'Игорь Уколов', rec:true}],
+            21: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Игорь Уколов'}],
+            22: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №17', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'med', n:'Задача №14', te:'Антон Гурко'}],
+            23: [{t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов', rec:true}],
+            24: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №15', te:'Влад Вуль'}],
+            26: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №11', te:'Антон Гурко'}],
+            27: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №2', te:'Игорь Уколов', rec:true}]
+        },
+        '2027-01': {
+            11: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Вводный веб', te:'Игорь Уколов'}],
+            12: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №14', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №15 (Метод координат)', te:'Влад Вуль'}],
+            13: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №4', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Игорь Уколов'}],
+            14: [{t:'17:00-20:00', ty:'d', lvl:'hard', n:'Задача №15 (3 часа)', te:'Влад Вуль'}],
+            17: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №20 (аб)', te:'Влад Вуль', rec:true}],
+            18: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №5', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Игорь Уколов'}],
+            19: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №14', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19 (аналитика)', te:'Влад Вуль'}],
+            20: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №15', te:'Антон Гурко', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19 (запись)', te:'Игорь Уколов', rec:true}],
+            21: [{t:'17:00-20:00', ty:'d', lvl:'hard', n:'Задача №19 (аналитика) (3 часа)', te:'Влад Вуль'}],
+            22: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №10', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №12', te:'Игорь Уколов'}],
+            23: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №15', te:'Антон Гурко'}],
+            24: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №20 (аб)', te:'Влад Вуль', rec:true}],
+            25: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №6', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Игорь Уколов'}],
+            26: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №14', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19 (аналитика)', te:'Влад Вуль'}],
+            27: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}],
+            28: [{t:'17:00-20:00', ty:'d', lvl:'hard', n:'Задача №19 (аналитика) (3 часа)', te:'Влад Вуль'}],
+            29: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №10', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №12', te:'Игорь Уколов'}],
+            30: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №15', te:'Антон Гурко'}]
+        },
+        '2027-02': {
+            1: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №17', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'med', n:'Задача №13', te:'Игорь Уколов'}],
+            2: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №9', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19, графика', te:'Влад Вуль'}],
+            3: [{t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов', rec:true}],
+            4: [{t:'17:00-20:00', ty:'d', lvl:'hard', n:'Задача №19, графика (3 часа)', te:'Влад Вуль'}],
+            5: [{t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №1', te:'Игорь Уколов', rec:true}],
+            6: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №15', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №11', te:'Игорь Уколов', rec:true}],
+            8: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №17', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'med', n:'Задача №13', te:'Игорь Уколов'}],
+            9: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №9', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19, графика', te:'Влад Вуль'}],
+            10: [{t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов', rec:true}],
+            11: [{t:'17:00-20:00', ty:'d', lvl:'hard', n:'Задача №19, графика (3 часа)', te:'Влад Вуль'}],
+            12: [{t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №1', te:'Игорь Уколов', rec:true}],
+            13: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №15', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №11', te:'Игорь Уколов', rec:true}],
+            15: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №17', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'med', n:'Задача №13', te:'Игорь Уколов'}],
+            16: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №2', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19, функц. методы', te:'Влад Вуль'}],
+            17: [{t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов', rec:true}],
+            18: [{t:'17:00-20:00', ty:'d', lvl:'hard', n:'Задача №19, функц. методы (3 часа)', te:'Влад Вуль'}],
+            19: [{t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №1', te:'Игорь Уколов', rec:true}],
+            20: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №15', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №11', te:'Игорь Уколов', rec:true}],
+            22: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №17', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'med', n:'Задача №13', te:'Игорь Уколов'}],
+            23: [{t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19, функц. методы', te:'Влад Вуль'}],
+            24: [{t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов', rec:true}],
+            25: [{t:'17:00-20:00', ty:'d', lvl:'hard', n:'Задача №19, функц. методы (3 часа)', te:'Влад Вуль'}],
+            27: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №15', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №11', te:'Игорь Уколов', rec:true}]
+        },
+        '2027-03': {
+            1: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}],
+            2: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №3', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №20', te:'Влад Вуль'}],
+            3: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №4', te:'Игорь Уколов', rec:true}],
+            4: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №14', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №15', te:'Влад Вуль'}],
+            5: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №14', te:'Влад Вуль', rec:true}],
+            6: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №12', te:'Игорь Уколов', rec:true}],
+            7: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Игорь Уколов', rec:true}],
+            8: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}],
+            9: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №3', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №20', te:'Влад Вуль'}],
+            10: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №4', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №6', te:'Игорь Уколов'}],
+            11: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №15', te:'Влад Вуль'}],
+            12: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №14', te:'Влад Вуль', rec:true}],
+            13: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Антон Гурко'}],
+            14: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Игорь Уколов', rec:true}],
+            15: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}],
+            16: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №3', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №20', te:'Влад Вуль'}],
+            17: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №5', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №6', te:'Игорь Уколов'}],
+            18: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №15', te:'Влад Вуль'}],
+            19: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №14', te:'Влад Вуль', rec:true}],
+            20: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Антон Гурко'}],
+            21: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Игорь Уколов', rec:true}],
+            22: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}],
+            23: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №3', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №20', te:'Влад Вуль'}],
+            24: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №5', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №6', te:'Игорь Уколов'}],
+            25: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №15', te:'Влад Вуль'}],
+            26: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №14', te:'Влад Вуль'}],
+            27: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Антон Гурко'}],
+            28: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Игорь Уколов', rec:true}],
+            29: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}]
+        },
+        '2027-04': {
+            5: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}],
+            6: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Влад Вуль'}],
+            7: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №2', te:'Антон Гурко', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №11', te:'Игорь Уколов', rec:true}],
+            8: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №15', te:'Влад Вуль'}],
+            9: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №20', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №1', te:'Игорь Уколов', rec:true}],
+            10: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №10', te:'Антон Гурко', rec:true}],
+            11: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'med', n:'Задача №13', te:'Игорь Уколов', rec:true}],
+            12: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}],
+            13: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Влад Вуль'}],
+            14: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №17', te:'Антон Гурко', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №11', te:'Игорь Уколов', rec:true}],
+            15: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №15', te:'Влад Вуль'}],
+            16: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №20', te:'Влад Вуль', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №1', te:'Игорь Уколов', rec:true}],
+            17: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №17', te:'Антон Гурко', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №10', te:'Антон Гурко', rec:true}],
+            18: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'med', n:'Задача №13', te:'Игорь Уколов'}],
+            19: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}],
+            20: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Влад Вуль'}],
+            21: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Производная', te:'Игорь Уколов', rec:true}, {t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №9', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №11', te:'Игорь Уколов'}],
+            22: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №15', te:'Влад Вуль'}],
+            23: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №20', te:'Влад Вуль', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №1', te:'Игорь Уколов', rec:true}],
+            24: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №17', te:'Антон Гурко'}],
+            25: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'med', n:'Задача №13', te:'Игорь Уколов'}],
+            26: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}],
+            27: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Влад Вуль'}],
+            28: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №9', te:'Игорь Уколов', rec:true}, {t:'17:00-19:00', ty:'d', lvl:'base', n:'Первообразная', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №11', te:'Игорь Уколов'}],
+            29: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №15', te:'Влад Вуль'}],
+            30: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №20', te:'Влад Вуль', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №1', te:'Игорь Уколов', rec:true}]
+        },
+        '2027-05': {
+            2: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'med', n:'Задача №13', te:'Игорь Уколов', rec:true}],
+            3: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №14', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}],
+            4: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №7, 8', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Влад Вуль'}],
+            5: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №20', te:'Игорь Уколов'}],
+            6: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №15', te:'Влад Вуль'}],
+            7: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №20', te:'Влад Вуль'}],
+            8: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №9', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №4, 5', te:'Влад Вуль', rec:true}],
+            9: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Влад Вуль', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №15', te:'Антон Гурко'}],
+            10: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №14', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}],
+            11: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №6', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Влад Вуль'}],
+            12: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №20', te:'Игорь Уколов'}],
+            13: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №15', te:'Влад Вуль'}],
+            14: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №20', te:'Влад Вуль'}],
+            15: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №13', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №11', te:'Антон Гурко', rec:true}],
+            16: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Влад Вуль', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №15', te:'Антон Гурко'}],
+            17: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №17', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}],
+            18: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №10', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Влад Вуль'}],
+            19: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №20', te:'Игорь Уколов'}],
+            20: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №16', te:'Влад Вуль'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №15', te:'Влад Вуль'}],
+            21: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №20', te:'Влад Вуль'}],
+            22: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №13', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №1', te:'Антон Гурко', rec:true}],
+            23: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Влад Вуль', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №15', te:'Антон Гурко'}],
+            24: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №17', te:'Игорь Уколов'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Игорь Уколов'}],
+            25: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №2', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Влад Вуль'}],
+            26: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №18', te:'Игорь Уколов', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №20', te:'Игорь Уколов'}],
+            27: [{t:'17:00-19:00', ty:'d', lvl:'med', n:'Задача №15', te:'Влад Вуль'}],
+            28: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №20', te:'Влад Вуль'}],
+            29: [{t:'17:00-19:00', ty:'d', lvl:'base', n:'Задача №12', te:'Антон Гурко'}, {t:'19:00-21:00', ty:'d', lvl:'base', n:'Задача №3', te:'Антон Гурко', rec:true}],
+            30: [{t:'17:00-19:00', ty:'d', lvl:'hard', n:'Задача №19', te:'Влад Вуль', rec:true}, {t:'19:00-21:00', ty:'d', lvl:'hard', n:'Задача №15', te:'Антон Гурко'}]
+        }
+    };
+
+    // ==========================================
+    // ЛОГИКА И ОТРИСОВКА
+    // ==========================================
+    
+    let currentDate = new Date(2026, 10, 1);
+    let selectedDate = new Date(2026, 10, 12);
+
+    const monthsNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+    const daysNames = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+
+    const calendarGrid = document.getElementById('calendarGrid');
+    const monthTitle = document.getElementById('monthTitle');
+    const eventsList = document.getElementById('eventsList');
+    const selectedDateText = document.getElementById('selectedDateText');
+
+    function getEventsForDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = date.getDate();
+        const dateKey = `${year}-${month}`;
+        
+        let events = [];
+
+        // Математика
+        if (mathData[dateKey] && mathData[dateKey][day]) {
+            events = events.concat(mathData[dateKey][day]);
+        }
+
+        // Русский язык (Пн - 18:00, Ср/Пт - 16:00)
+        const dayOfWeek = date.getDay();
+        if (dayOfWeek === 1) {
+            events.push({t:'18:00', ty:'r', n:'Урок русского языка', te:'Маша'});
+        } else if (dayOfWeek === 3 || dayOfWeek === 5) {
+            events.push({t:'16:00', ty:'r', n:'Урок русского языка', te:'Маша'});
+        }
+
+        events.sort((a, b) => a.t.localeCompare(b.t));
+        return events;
+    }
+
+    function renderCalendar() {
+        calendarGrid.innerHTML = '';
+        monthTitle.textContent = `${monthsNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+
+        const firstDay = new Date(year, month, 1);
+        let startDayOfWeek = firstDay.getDay(); 
+        if (startDayOfWeek === 0) startDayOfWeek = 7;
+
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+        for (let i = 1; i < startDayOfWeek; i++) {
+            const emptyDay = document.createElement('div');
+            emptyDay.className = 'day other-month';
+            emptyDay.textContent = daysInPrevMonth - startDayOfWeek + i + 1;
+            calendarGrid.appendChild(emptyDay);
+        }
+
+        for (let i = 1; i <= daysInMonth; i++) {
+            const dayEl = document.createElement('div');
+            dayEl.className = 'day';
+            dayEl.textContent = i;
+            
+            const thisDate = new Date(year, month, i);
+            const events = getEventsForDate(thisDate);
+
+            if (thisDate.getDate() === selectedDate.getDate() && 
+                thisDate.getMonth() === selectedDate.getMonth() && 
+                thisDate.getFullYear() === selectedDate.getFullYear()) {
+                dayEl.classList.add('active');
+            }
+
+            let hasBase = false, hasMed = false, hasHard = false, hasRus = false, hasDL = false, hasRec = false;
+
+            events.forEach(e => {
+                if (e.ty === 'd') {
+                    if (e.lvl === 'base') hasBase = true;
+                    if (e.lvl === 'med') hasMed = true;
+                    if (e.lvl === 'hard') hasHard = true;
+                }
+                if (e.ty === 'r') hasRus = true;
+                if (e.ty === 'dl') hasDL = true;
+                if (e.rec) hasRec = true;
+            });
+
+            // Градиентная полоска сложности
+            if (hasBase || hasMed || hasHard) {
+                const levelBar = document.createElement('div');
+                levelBar.className = 'level-bar';
+                if (hasBase) levelBar.innerHTML += '<div class="level-base"></div>';
+                if (hasMed) levelBar.innerHTML += '<div class="level-med"></div>';
+                if (hasHard) levelBar.innerHTML += '<div class="level-hard"></div>';
+                dayEl.appendChild(levelBar);
+            }
+
+            // Иконка "В записи"
+            if (hasRec) {
+                const icons = document.createElement('div');
+                icons.className = 'day-icons';
+                icons.innerHTML = `<svg class="icon-rec" viewBox="0 0 24 24" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4zM15 16H5V8h10v8z"/></svg>`;
+                dayEl.appendChild(icons);
+            }
+
+            // Точки (Русский, Дедлайн)
+            const dots = document.createElement('div');
+            dots.className = 'dots-container';
+            if (hasRus) dots.innerHTML += '<span class="dot-ind dot-rus"></span>';
+            if (hasDL) dots.innerHTML += '<span class="dot-ind dot-dl"></span>';
+            if (dots.innerHTML !== '') dayEl.appendChild(dots);
+
+            dayEl.onclick = () => {
+                selectedDate = thisDate;
+                renderCalendar();
+                renderEvents();
+            };
+
+            calendarGrid.appendChild(dayEl);
+        }
+    }
+
+    function renderEvents() {
+        const events = getEventsForDate(selectedDate);
+        selectedDateText.textContent = `${daysNames[selectedDate.getDay()]}, ${selectedDate.getDate()} ${monthsNames[selectedDate.getMonth()].toLowerCase()}`;
+        
+        eventsList.innerHTML = '';
+
+        if (events.length === 0) {
+            eventsList.innerHTML = '<div class="empty-state">На этот день занятий нет</div>';
+            return;
+        }
+
+        events.forEach(event => {
+            const card = document.createElement('div');
+            card.className = 'event-card';
+
+            let badgeHTML = '';
+            let recBadge = event.rec ? '<span class="badge badge-rec"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg> В записи</span>' : '';
+            
+            if (event.ty === 'r') {
+                card.classList.add('card-rus');
+                badgeHTML = '<span class="badge badge-rus">Русский</span>';
+            } else if (event.ty === 'dl') {
+                card.classList.add('card-dl');
+                badgeHTML = '<span class="badge" style="background: rgba(237, 137, 54, 0.15); color: var(--deadline-color);">Дедлайн</span>';
+            } else if (event.ty === 'd') {
+                if (event.lvl === 'base') { card.classList.add('card-base'); badgeHTML = '<span class="badge badge-base">База</span>'; }
+                if (event.lvl === 'med') { card.classList.add('card-med'); badgeHTML = '<span class="badge badge-med">Средний</span>'; }
+                if (event.lvl === 'hard') { card.classList.add('card-hard'); badgeHTML = '<span class="badge badge-hard">Хард</span>'; }
+            }
+
+            card.innerHTML = `
+                <div class="event-info">
+                    <div class="event-meta">
+                        <span class="event-time">${event.t}</span>
+                        ${badgeHTML}
+                        ${recBadge}
+                    </div>
+                    <div class="event-title">${event.n}</div>
+                    ${event.te ? `<div class="event-teacher">👨‍🏫 ${event.te}</div>` : ''}
+                </div>
+            `;
+            eventsList.appendChild(card);
+        });
+    }
+
+    document.getElementById('prevMonth').onclick = () => {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        renderCalendar();
+    };
+
+    document.getElementById('nextMonth').onclick = () => {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        renderCalendar();
+    };
+
+    const themeToggle = document.getElementById('themeToggle');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && prefersDark)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        themeToggle.textContent = '☀️';
+    }
+
+    themeToggle.onclick = () => {
+        if (document.documentElement.getAttribute('data-theme') === 'dark') {
+            document.documentElement.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'light');
+            themeToggle.textContent = '🌙';
+        } else {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+            themeToggle.textContent = '☀️';
+        }
+    };
+
+    renderCalendar();
+    renderEvents();
+</script>
+</body>
+</html>
